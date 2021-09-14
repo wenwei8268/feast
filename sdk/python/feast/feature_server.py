@@ -13,7 +13,7 @@ def get_app(store: "feast.FeatureStore"):
 
     app = FastAPI()
 
-    @app.get("/get-online-features/")
+    @app.post("/get-online-features")
     async def get_online_features(request: Request):
         try:
             # Validate and parse the request data into GetOnlineFeaturesRequest Protobuf object

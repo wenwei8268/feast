@@ -1,0 +1,14 @@
+project: feature_repo_aws
+registry: data/registry.db
+provider: aws
+online_store:
+  type: redis
+  connection_string: "feast-benchmark-2.xryxo9.ng.0001.usw2.cache.amazonaws.com:6379"
+offline_store:
+  type: redshift
+  cluster_id: feast-integration-tests
+  region: us-west-2
+  database: feast
+  user: admin
+  s3_staging_location: s3://feast-integration-tests/redshift
+  iam_role: arn:aws:iam::402087665549:role/redshift_s3_access_role
