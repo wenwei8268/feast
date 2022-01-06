@@ -13,7 +13,7 @@
 # limitations under the License.
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Union
 
 import pandas as pd
 import pyarrow

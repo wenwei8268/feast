@@ -787,10 +787,11 @@ class FeatureStore:
         _feature_refs = [ref for ref in _feature_refs if ref not in request_fv_refs]
         provider = self._get_provider()
 
-        if save_as:
-            save_as = SavedDataset(
-                name=save_as.name, features=[], storage=save_as.storage
-            )
+        saved_dataset = (
+            SavedDataset(name=save_as.name, features=[], storage=save_as.storage)
+            if save_as
+            else None
+        )
 
         job = provider.get_historical_features(
             self.config,
@@ -800,7 +801,7 @@ class FeatureStore:
             self._registry,
             self.project,
             full_feature_names,
-            save_as=save_as,
+            save_as=saved_dataset,
         )
 
         return job

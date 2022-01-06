@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from datetime import datetime
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type
 
 from google.protobuf.json_format import MessageToJson
 
@@ -23,7 +23,7 @@ class _StorageRegistry(type):
 
 
 class SavedDatasetStorage(metaclass=_StorageRegistry):
-    _proto_attr_name = None
+    _proto_attr_name: str
 
     @staticmethod
     def from_proto(storage_proto: SavedDatasetStorageProto) -> "SavedDatasetStorage":
@@ -35,25 +35,6 @@ class SavedDatasetStorage(metaclass=_StorageRegistry):
     @abstractmethod
     def to_proto(self) -> SavedDatasetStorageProto:
         pass
-
-
-# class FileStorage(SavedDatasetStorage):
-#     path: str
-#     file_format: FileFormat
-#     s3_endpoint_override: Optional[str]
-#
-#     def __init__(
-#             self,
-#             path: str = None,
-#             file_format: FileFormat = None,
-#             s3_endpoint_override: Optional[str] = None,
-#     ):
-#         self.path = path
-#         self.file_format = file_format
-#         self.s3_endpoint_override = s3_endpoint_override
-#
-#     def to_proto_options(self):
-#         return {"file_options": FileOptions}
 
 
 class SavedDataset:
