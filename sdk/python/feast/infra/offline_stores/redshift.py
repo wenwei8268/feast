@@ -26,9 +26,11 @@ from feast.errors import InvalidEntityType
 from feast.feature_view import DUMMY_ENTITY_ID, DUMMY_ENTITY_VAL, FeatureView
 from feast.infra.offline_stores import offline_utils
 from feast.infra.offline_stores.offline_store import OfflineStore, RetrievalJob
+from feast.infra.offline_stores.redshift_source import SavedDatasetRedshiftStorage
 from feast.infra.utils import aws_utils
 from feast.registry import Registry
 from feast.repo_config import FeastConfigBaseModel, RepoConfig
+from feast.saved_dataset import SavedDatasetStorage
 from feast.usage import log_exceptions_and_usage
 
 
@@ -333,6 +335,19 @@ class RedshiftRetrievalJob(RetrievalJob):
                 self._config.offline_store.user,
                 query,
             )
+
+    def persist(self, storage: SavedDatasetStorage) -> "RedshiftRetrievalJob":
+        assert isinstance(storage, SavedDatasetRedshiftStorage)
+
+        self.to_redshift(table_name=storage.redshift_options.table)
+
+        return RedshiftRetrievalJob(
+            query=f"select * from {storage.redshift_options.table}",
+            redshift_client=self._redshift_client,
+            s3_resource=self._s3_resource,
+            config=self._config,
+            full_feature_names=self.full_feature_names,
+        )
 
 
 def _upload_entity_df_and_get_entity_schema(

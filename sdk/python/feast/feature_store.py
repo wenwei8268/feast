@@ -73,6 +73,7 @@ from feast.protos.feast.types.EntityKey_pb2 import EntityKey as EntityKeyProto
 from feast.registry import Registry
 from feast.repo_config import RepoConfig, load_repo_config
 from feast.request_feature_view import RequestFeatureView
+from feast.saved_dataset import SavedDataset, SavedDatasetOptions
 from feast.type_map import python_values_to_proto_values
 from feast.usage import log_exceptions, log_exceptions_and_usage, set_usage_attribute
 from feast.value_type import ValueType
@@ -681,6 +682,7 @@ class FeatureStore:
         entity_df: Union[pd.DataFrame, str],
         features: Union[List[str], FeatureService],
         full_feature_names: bool = False,
+        save_as: Optional[SavedDatasetOptions] = None,
     ) -> RetrievalJob:
         """Enrich an entity dataframe with historical feature values for either training or batch scoring.
 
@@ -785,6 +787,11 @@ class FeatureStore:
         _feature_refs = [ref for ref in _feature_refs if ref not in request_fv_refs]
         provider = self._get_provider()
 
+        if save_as:
+            save_as = SavedDataset(
+                name=save_as.name, features=[], storage=save_as.storage
+            )
+
         job = provider.get_historical_features(
             self.config,
             feature_views,
@@ -793,6 +800,7 @@ class FeatureStore:
             self._registry,
             self.project,
             full_feature_names,
+            save_as=save_as,
         )
 
         return job

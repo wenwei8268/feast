@@ -17,6 +17,7 @@ from feast.protos.feast.types.EntityKey_pb2 import EntityKey as EntityKeyProto
 from feast.protos.feast.types.Value_pb2 import Value as ValueProto
 from feast.registry import Registry
 from feast.repo_config import RepoConfig
+from feast.saved_dataset import SavedDataset
 from feast.type_map import python_values_to_proto_values
 from feast.value_type import ValueType
 
@@ -132,6 +133,7 @@ class Provider(abc.ABC):
         registry: Registry,
         project: str,
         full_feature_names: bool,
+        save_as: Optional[SavedDataset] = None,
     ) -> RetrievalJob:
         pass
 

@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Optional
 
 import pandas as pd
@@ -5,6 +6,10 @@ import pandas as pd
 from feast import RedshiftSource
 from feast.data_source import DataSource
 from feast.infra.offline_stores.redshift import RedshiftOfflineStoreConfig
+from feast.infra.offline_stores.redshift_source import (
+    RedshiftOptions,
+    SavedDatasetRedshiftStorage,
+)
 from feast.infra.utils import aws_utils
 from feast.repo_config import FeastConfigBaseModel
 from tests.integration.feature_repos.universal.data_source_creator import (
@@ -63,6 +68,16 @@ class RedshiftDataSourceCreator(DataSourceCreator):
             created_timestamp_column=created_timestamp_column,
             date_partition_column="",
             field_mapping=field_mapping or {"ts_1": "ts"},
+        )
+
+    def create_saved_dataset_destination(self) -> SavedDatasetRedshiftStorage:
+        table = self.get_prefixed_table_name(
+            f"persisted_ds_{str(uuid.uuid4()).replace('-', '_')}"
+        )
+        self.tables.append(table)
+
+        return SavedDatasetRedshiftStorage(
+            redshift_options=RedshiftOptions(table=table, schema=None, query=None)
         )
 
     def create_offline_store_config(self) -> FeastConfigBaseModel:

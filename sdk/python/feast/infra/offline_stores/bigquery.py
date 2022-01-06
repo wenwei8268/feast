@@ -35,8 +35,9 @@ from feast.on_demand_feature_view import OnDemandFeatureView
 from feast.registry import Registry
 from feast.repo_config import FeastConfigBaseModel, RepoConfig
 
+from ...saved_dataset import SavedDatasetStorage
 from ...usage import log_exceptions_and_usage
-from .bigquery_source import BigQuerySource
+from .bigquery_source import BigQuerySource, SavedDatasetBigQueryStorage
 
 try:
     from google.api_core.exceptions import NotFound
@@ -309,6 +310,20 @@ class BigQueryRetrievalJob(RetrievalJob):
 
         block_until_done(client=self.client, bq_job=bq_job, timeout=timeout)
         return bq_job
+
+    def persist(self, storage: SavedDatasetStorage) -> "BigQueryRetrievalJob":
+        assert isinstance(storage, SavedDatasetBigQueryStorage)
+
+        persisted_table = self.to_bigquery(
+            bigquery.QueryJobConfig(destination=storage.bigquery_options.table_ref)
+        )
+
+        return BigQueryRetrievalJob(
+            query=f"select * from `{persisted_table}`",
+            client=self.client,
+            config=self.config,
+            full_feature_names=self.full_feature_names,
+        )
 
 
 def block_until_done(

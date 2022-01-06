@@ -10,6 +10,7 @@ from feast.infra.provider import Provider
 from feast.protos.feast.types.EntityKey_pb2 import EntityKey as EntityKeyProto
 from feast.protos.feast.types.Value_pb2 import Value as ValueProto
 from feast.registry import Registry
+from feast.saved_dataset import SavedDataset
 
 
 class FooProvider(Provider):
@@ -64,6 +65,7 @@ class FooProvider(Provider):
         registry: Registry,
         project: str,
         full_feature_names: bool = False,
+        save_as: Optional[SavedDataset] = None,
     ) -> RetrievalJob:
         pass
 

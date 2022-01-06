@@ -8,7 +8,11 @@ from feast import type_map
 from feast.data_format import FileFormat
 from feast.data_source import DataSource
 from feast.protos.feast.core.DataSource_pb2 import DataSource as DataSourceProto
+from feast.protos.feast.core.SavedDataset_pb2 import (
+    SavedDatasetStorage as SavedDatasetStorageProto,
+)
 from feast.repo_config import RepoConfig
+from feast.saved_dataset import SavedDatasetStorage
 from feast.value_type import ValueType
 
 
@@ -260,3 +264,21 @@ class FileOptions:
         )
 
         return file_options_proto
+
+
+class SavedDatasetFileStorage(SavedDatasetStorage):
+    _proto_attr_name = "file_storage"
+
+    file_options: FileOptions
+
+    def __init__(self, file_options: FileOptions):
+        self.file_options = file_options
+
+    @staticmethod
+    def from_proto(storage_proto: SavedDatasetStorageProto) -> SavedDatasetStorage:
+        return SavedDatasetFileStorage(
+            file_options=FileOptions.from_proto(storage_proto.file_storage)
+        )
+
+    def to_proto(self) -> SavedDatasetStorageProto:
+        return SavedDatasetStorageProto(file_storage=self.file_options.to_proto())

@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package feast.core;
+option java_package = "feast.proto.core";
+option java_outer_classname = "SavedDatasetProto";
+option go_package = "github.com/feast-dev/feast/sdk/go/protos/feast/core";
+
+import "google/protobuf/timestamp.proto";
+import "feast/core/FeatureViewProjection.proto";
+import "feast/core/DataSource.proto";
+
+message SavedDatasetSpec {
+  // Name of the dataset. Must be unique since it's possible to overwrite dataset by name
+  string name = 1;
+
+  // Name of Feast project that this Dataset belongs to.
+  string project = 2;
+
+  // Represents a projection that's to be applied on top of the FeatureView.
+  // Contains data such as the features to use from a FeatureView.
+  repeated FeatureViewProjection features = 3;
+
+  SavedDatasetStorage storage = 4;
+}
+
+message SavedDatasetStorage {
+  oneof kind {
+    DataSource.FileOptions file_storage = 4;
+    DataSource.BigQueryOptions bigquery_storage = 5;
+    DataSource.RedshiftOptions redshift_storage = 6;
+  }
+}
+
+message SavedDatasetMeta {
+  // Time where this Saved Dataset is created
+  google.protobuf.Timestamp created_timestamp = 1;
+
+  // Time where this Saved Dataset is last updated
+  google.protobuf.Timestamp last_updated_timestamp = 2;
+}
+
+message SavedDataset {
+  SavedDatasetSpec spec = 1;
+  SavedDatasetMeta meta = 2;
+}

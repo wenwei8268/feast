@@ -13,7 +13,7 @@
 # limitations under the License.
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 import pandas as pd
 import pyarrow
@@ -23,6 +23,7 @@ from feast.feature_view import FeatureView
 from feast.on_demand_feature_view import OnDemandFeatureView
 from feast.registry import Registry
 from feast.repo_config import RepoConfig
+from feast.saved_dataset import SavedDatasetStorage
 
 
 class RetrievalJob(ABC):
@@ -72,6 +73,12 @@ class RetrievalJob(ABC):
                 odfv.get_transformed_features_df(features_df, self.full_feature_names,)
             )
         return pyarrow.Table.from_pandas(features_df)
+
+    @abstractmethod
+    def persist(self, storage: SavedDatasetStorage) -> "RetrievalJob":
+        """ Runs the retrieval and persists the results in the same DWH as batch data source.
+         Returned new RetrievalJob must use this persisted table as its source. """
+        pass
 
 
 class OfflineStore(ABC):

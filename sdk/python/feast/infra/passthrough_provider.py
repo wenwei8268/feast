@@ -20,6 +20,7 @@ from feast.protos.feast.types.EntityKey_pb2 import EntityKey as EntityKeyProto
 from feast.protos.feast.types.Value_pb2 import Value as ValueProto
 from feast.registry import Registry
 from feast.repo_config import RepoConfig
+from feast.saved_dataset import SavedDataset
 from feast.usage import RatioSampler, log_exceptions_and_usage, set_usage_attribute
 
 DEFAULT_BATCH_SIZE = 10_000
@@ -165,6 +166,7 @@ class PassthroughProvider(Provider):
         registry: Registry,
         project: str,
         full_feature_names: bool,
+        save_as: Optional[SavedDataset] = None,
     ) -> RetrievalJob:
         set_usage_attribute("provider", self.__class__.__name__)
 
@@ -177,4 +179,7 @@ class PassthroughProvider(Provider):
             project=project,
             full_feature_names=full_feature_names,
         )
+        if save_as:
+            job = job.persist(save_as.storage)
+
         return job

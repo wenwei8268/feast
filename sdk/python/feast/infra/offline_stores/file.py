@@ -10,6 +10,7 @@ from feast import FileSource, OnDemandFeatureView
 from feast.data_source import DataSource
 from feast.errors import FeastJoinKeysDuringMaterialization
 from feast.feature_view import DUMMY_ENTITY_ID, DUMMY_ENTITY_VAL, FeatureView
+from feast.infra.offline_stores.file_source import SavedDatasetFileStorage
 from feast.infra.offline_stores.offline_store import OfflineStore, RetrievalJob
 from feast.infra.offline_stores.offline_utils import (
     DEFAULT_ENTITY_DF_EVENT_TIMESTAMP_COL,
@@ -20,6 +21,7 @@ from feast.infra.provider import (
 )
 from feast.registry import Registry
 from feast.repo_config import FeastConfigBaseModel, RepoConfig
+from feast.saved_dataset import SavedDatasetStorage
 from feast.usage import log_exceptions_and_usage
 
 
@@ -65,6 +67,30 @@ class FileRetrievalJob(RetrievalJob):
         # Only execute the evaluation function to build the final historical retrieval dataframe at the last moment.
         df = self.evaluation_function()
         return pyarrow.Table.from_pandas(df)
+
+    def persist(self, storage: SavedDatasetStorage) -> "FileRetrievalJob":
+        assert isinstance(storage, SavedDatasetFileStorage)
+
+        filesystem, path = FileSource.create_filesystem_and_path(
+            storage.file_options.file_url, storage.file_options.s3_endpoint_override,
+        )
+
+        if path.endswith(".parquet"):
+            pyarrow.parquet.write_table(
+                self._to_arrow_internal(), where=path, filesystem=filesystem
+            )
+        else:
+            pyarrow.parquet.write_to_dataset(
+                self._to_arrow_internal(), root_path=path, filesystem=filesystem
+            )
+
+        def simple_evaluation():
+            return pyarrow.parquet.read_table(path, filesystem=filesystem).to_pandas()
+
+        return FileRetrievalJob(
+            evaluation_function=simple_evaluation,
+            full_feature_names=self.full_feature_names,
+        )
 
 
 class FileOfflineStore(OfflineStore):

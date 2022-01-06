@@ -4,7 +4,11 @@ from feast import type_map
 from feast.data_source import DataSource
 from feast.errors import DataSourceNotFoundException, RedshiftCredentialsError
 from feast.protos.feast.core.DataSource_pb2 import DataSource as DataSourceProto
+from feast.protos.feast.core.SavedDataset_pb2 import (
+    SavedDatasetStorage as SavedDatasetStorageProto,
+)
 from feast.repo_config import RepoConfig
+from feast.saved_dataset import SavedDatasetStorage
 from feast.value_type import ValueType
 
 
@@ -269,3 +273,23 @@ class RedshiftOptions:
         )
 
         return redshift_options_proto
+
+
+class SavedDatasetRedshiftStorage(SavedDatasetStorage):
+    _proto_attr_name = "redshift_storage"
+
+    redshift_options: RedshiftOptions
+
+    def __init__(self, redshift_options: RedshiftOptions):
+        self.redshift_options = redshift_options
+
+    @staticmethod
+    def from_proto(storage_proto: SavedDatasetStorageProto) -> SavedDatasetStorage:
+        return SavedDatasetRedshiftStorage(
+            redshift_options=RedshiftOptions.from_proto(storage_proto.redshift_storage)
+        )
+
+    def to_proto(self) -> SavedDatasetStorageProto:
+        return SavedDatasetStorageProto(
+            redshift_storage=self.redshift_options.to_proto()
+        )
