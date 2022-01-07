@@ -45,6 +45,9 @@ class SavedDataset:
     created_timestamp: Optional[datetime] = None
     last_updated_timestamp: Optional[datetime] = None
 
+    min_event_timestamp: Optional[datetime] = None
+    max_event_timestamp: Optional[datetime] = None
+
     def __init__(
         self,
         name: str,
@@ -106,6 +109,14 @@ class SavedDataset:
             ds.last_updated_timestamp = (
                 saved_dataset_proto.meta.last_updated_timestamp.ToDatetime()
             )
+        if saved_dataset_proto.meta.HasField("min_event_timestamp"):
+            ds.min_event_timestamp = (
+                saved_dataset_proto.meta.min_event_timestamp.ToDatetime()
+            )
+        if saved_dataset_proto.meta.HasField("max_event_timestamp"):
+            ds.max_event_timestamp = (
+                saved_dataset_proto.meta.max_event_timestamp.ToDatetime()
+            )
 
         return ds
 
@@ -119,6 +130,10 @@ class SavedDataset:
         meta = SavedDatasetMeta()
         if self.created_timestamp:
             meta.created_timestamp.FromDatetime(self.created_timestamp)
+        if self.min_event_timestamp:
+            meta.min_event_timestamp.FromDatetime(self.min_event_timestamp)
+        if self.max_event_timestamp:
+            meta.max_event_timestamp.FromDatetime(self.max_event_timestamp)
 
         spec = SavedDatasetSpec(
             name=self.name,

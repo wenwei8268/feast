@@ -37,7 +37,9 @@ message SavedDatasetSpec {
   // Contains data such as the features to use from a FeatureView.
   repeated FeatureViewProjection features = 3;
 
-  SavedDatasetStorage storage = 4;
+  repeated string join_keys = 4;
+
+  SavedDatasetStorage storage = 5;
 }
 
 message SavedDatasetStorage {
@@ -54,6 +56,10 @@ message SavedDatasetMeta {
 
   // Time where this Saved Dataset is last updated
   google.protobuf.Timestamp last_updated_timestamp = 2;
+
+  google.protobuf.Timestamp min_event_timestamp = 3;
+
+  google.protobuf.Timestamp max_event_timestamp = 4;
 }
 
 message SavedDataset {

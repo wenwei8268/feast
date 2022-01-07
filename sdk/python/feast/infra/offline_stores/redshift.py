@@ -25,7 +25,11 @@ from feast.data_source import DataSource
 from feast.errors import InvalidEntityType
 from feast.feature_view import DUMMY_ENTITY_ID, DUMMY_ENTITY_VAL, FeatureView
 from feast.infra.offline_stores import offline_utils
-from feast.infra.offline_stores.offline_store import OfflineStore, RetrievalJob
+from feast.infra.offline_stores.offline_store import (
+    OfflineStore,
+    RetrievalJob,
+    RetrievalMetadata,
+)
 from feast.infra.offline_stores.redshift_source import SavedDatasetRedshiftStorage
 from feast.infra.utils import aws_utils
 from feast.registry import Registry
@@ -137,16 +141,24 @@ class RedshiftOfflineStore(OfflineStore):
         )
         s3_resource = aws_utils.get_s3_resource(config.offline_store.region)
 
+        entity_schema = _get_entity_schema(
+            entity_df, redshift_client, config, s3_resource
+        )
+
+        entity_df_event_timestamp_col = offline_utils.infer_event_timestamp_from_entity_df(
+            entity_schema
+        )
+
+        entity_df_event_timestamp_range = _get_entity_df_event_timestamp_range(
+            entity_df, entity_df_event_timestamp_col, redshift_client, config,
+        )
+
         @contextlib.contextmanager
         def query_generator() -> Iterator[str]:
             table_name = offline_utils.get_temp_entity_table_name()
 
-            entity_schema = _upload_entity_df_and_get_entity_schema(
+            _upload_entity_df(
                 entity_df, redshift_client, config, s3_resource, table_name
-            )
-
-            entity_df_event_timestamp_col = offline_utils.infer_event_timestamp_from_entity_df(
-                entity_schema
             )
 
             expected_join_keys = offline_utils.get_expected_join_keys(
@@ -155,14 +167,6 @@ class RedshiftOfflineStore(OfflineStore):
 
             offline_utils.assert_expected_columns_in_entity_df(
                 entity_schema, expected_join_keys, entity_df_event_timestamp_col
-            )
-
-            entity_df_event_timestamp_range = _get_entity_df_event_timestamp_range(
-                entity_df,
-                entity_df_event_timestamp_col,
-                redshift_client,
-                config,
-                table_name,
             )
 
             # Build a query context containing all information required to template the Redshift SQL query
@@ -205,6 +209,10 @@ class RedshiftOfflineStore(OfflineStore):
             on_demand_feature_views=OnDemandFeatureView.get_requested_odfvs(
                 feature_refs, project, registry
             ),
+            metadata=RetrievalMetadata(
+                min_event_timestamp=entity_df_event_timestamp_range[0],
+                max_event_timestamp=entity_df_event_timestamp_range[1],
+            ),
         )
 
 
@@ -217,6 +225,7 @@ class RedshiftRetrievalJob(RetrievalJob):
         config: RepoConfig,
         full_feature_names: bool,
         on_demand_feature_views: Optional[List[OnDemandFeatureView]] = None,
+        metadata: Optional[RetrievalMetadata] = None,
     ):
         """Initialize RedshiftRetrievalJob object.
 
@@ -250,6 +259,7 @@ class RedshiftRetrievalJob(RetrievalJob):
         self._on_demand_feature_views = (
             on_demand_feature_views if on_demand_feature_views else []
         )
+        self._metadata = metadata
 
     @property
     def full_feature_names(self) -> bool:
@@ -347,19 +357,23 @@ class RedshiftRetrievalJob(RetrievalJob):
             s3_resource=self._s3_resource,
             config=self._config,
             full_feature_names=self.full_feature_names,
+            metadata=self.metadata,
         )
 
+    @property
+    def metadata(self) -> Optional[RetrievalMetadata]:
+        return self._metadata
 
-def _upload_entity_df_and_get_entity_schema(
+
+def _upload_entity_df(
     entity_df: Union[pd.DataFrame, str],
     redshift_client,
     config: RepoConfig,
     s3_resource,
     table_name: str,
-) -> Dict[str, np.dtype]:
+):
     if isinstance(entity_df, pd.DataFrame):
         # If the entity_df is a pandas dataframe, upload it to Redshift
-        # and construct the schema from the original entity_df dataframe
         aws_utils.upload_df_to_redshift(
             redshift_client,
             config.offline_store.cluster_id,
@@ -371,10 +385,8 @@ def _upload_entity_df_and_get_entity_schema(
             table_name,
             entity_df,
         )
-        return dict(zip(entity_df.columns, entity_df.dtypes))
     elif isinstance(entity_df, str):
-        # If the entity_df is a string (SQL query), create a Redshift table out of it,
-        # get pandas dataframe consisting of 1 row (LIMIT 1) and generate the schema out of it
+        # If the entity_df is a string (SQL query), create a Redshift table out of it
         aws_utils.execute_redshift_statement(
             redshift_client,
             config.offline_store.cluster_id,
@@ -382,14 +394,29 @@ def _upload_entity_df_and_get_entity_schema(
             config.offline_store.user,
             f"CREATE TABLE {table_name} AS ({entity_df})",
         )
-        limited_entity_df = RedshiftRetrievalJob(
-            f"SELECT * FROM {table_name} LIMIT 1",
+    else:
+        raise InvalidEntityType(type(entity_df))
+
+
+def _get_entity_schema(
+    entity_df: Union[pd.DataFrame, str],
+    redshift_client,
+    config: RepoConfig,
+    s3_resource,
+) -> Dict[str, np.dtype]:
+    if isinstance(entity_df, pd.DataFrame):
+        return dict(zip(entity_df.columns, entity_df.dtypes))
+
+    elif isinstance(entity_df, str):
+        # get pandas dataframe consisting of 1 row (LIMIT 1) and generate the schema out of it
+        entity_df_sample = RedshiftRetrievalJob(
+            f"SELECT * FROM ({entity_df}) LIMIT 1",
             redshift_client,
             s3_resource,
             config,
             full_feature_names=False,
         ).to_df()
-        return dict(zip(limited_entity_df.columns, limited_entity_df.dtypes))
+        return dict(zip(entity_df_sample.columns, entity_df_sample.dtypes))
     else:
         raise InvalidEntityType(type(entity_df))
 
@@ -399,7 +426,6 @@ def _get_entity_df_event_timestamp_range(
     entity_df_event_timestamp_col: str,
     redshift_client,
     config: RepoConfig,
-    table_name: str,
 ) -> Tuple[datetime, datetime]:
     if isinstance(entity_df, pd.DataFrame):
         entity_df_event_timestamp = entity_df.loc[
@@ -421,7 +447,8 @@ def _get_entity_df_event_timestamp_range(
             config.offline_store.cluster_id,
             config.offline_store.database,
             config.offline_store.user,
-            f"SELECT MIN({entity_df_event_timestamp_col}) AS min, MAX({entity_df_event_timestamp_col}) AS max FROM {table_name}",
+            f"SELECT MIN({entity_df_event_timestamp_col}) AS min, MAX({entity_df_event_timestamp_col}) AS max "
+            f"FROM ({entity_df})",
         )
         res = aws_utils.get_redshift_statement_result(redshift_client, statement_id)[
             "Records"

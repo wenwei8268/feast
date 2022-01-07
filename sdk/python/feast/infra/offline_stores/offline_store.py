@@ -26,6 +26,19 @@ from feast.repo_config import RepoConfig
 from feast.saved_dataset import SavedDatasetStorage
 
 
+class RetrievalMetadata:
+    min_event_timestamp: Optional[datetime]
+    max_event_timestamp: Optional[datetime]
+
+    def __init__(
+        self,
+        min_event_timestamp: Optional[datetime] = None,
+        max_event_timestamp: Optional[datetime] = None,
+    ):
+        self.min_event_timestamp = min_event_timestamp
+        self.max_event_timestamp = max_event_timestamp
+
+
 class RetrievalJob(ABC):
     """RetrievalJob is used to manage the execution of a historical feature retrieval"""
 
@@ -76,8 +89,15 @@ class RetrievalJob(ABC):
 
     @abstractmethod
     def persist(self, storage: SavedDatasetStorage) -> "RetrievalJob":
-        """ Runs the retrieval and persists the results in the same DWH as batch data source.
+        """ Run the retrieval and persists the results in the same DWH as batch data source.
          Returned new RetrievalJob must use this persisted table as its source. """
+        pass
+
+    @property
+    @abstractmethod
+    def metadata(self) -> Optional[RetrievalMetadata]:
+        """ Return metadata information about retrieval.
+        Should be available (if available) even before materializing the data itself. """
         pass
 
 

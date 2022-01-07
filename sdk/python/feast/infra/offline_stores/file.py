@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import pandas as pd
 import pyarrow
@@ -11,7 +11,11 @@ from feast.data_source import DataSource
 from feast.errors import FeastJoinKeysDuringMaterialization
 from feast.feature_view import DUMMY_ENTITY_ID, DUMMY_ENTITY_VAL, FeatureView
 from feast.infra.offline_stores.file_source import SavedDatasetFileStorage
-from feast.infra.offline_stores.offline_store import OfflineStore, RetrievalJob
+from feast.infra.offline_stores.offline_store import (
+    OfflineStore,
+    RetrievalJob,
+    RetrievalMetadata,
+)
 from feast.infra.offline_stores.offline_utils import (
     DEFAULT_ENTITY_DF_EVENT_TIMESTAMP_COL,
 )
@@ -38,6 +42,7 @@ class FileRetrievalJob(RetrievalJob):
         evaluation_function: Callable,
         full_feature_names: bool,
         on_demand_feature_views: Optional[List[OnDemandFeatureView]] = None,
+        metadata: Optional[RetrievalMetadata] = None,
     ):
         """Initialize a lazy historical retrieval job"""
 
@@ -47,6 +52,7 @@ class FileRetrievalJob(RetrievalJob):
         self._on_demand_feature_views = (
             on_demand_feature_views if on_demand_feature_views else []
         )
+        self._metadata = metadata
 
     @property
     def full_feature_names(self) -> bool:
@@ -90,7 +96,12 @@ class FileRetrievalJob(RetrievalJob):
         return FileRetrievalJob(
             evaluation_function=simple_evaluation,
             full_feature_names=self.full_feature_names,
+            metadata=self._metadata,
         )
+
+    @property
+    def metadata(self) -> Optional[RetrievalMetadata]:
+        return self._metadata
 
 
 class FileOfflineStore(OfflineStore):
@@ -130,6 +141,10 @@ class FileOfflineStore(OfflineStore):
             feature_refs,
             feature_views,
             registry.list_on_demand_feature_views(config.project),
+        )
+
+        entity_df_event_timestamp_range = _get_entity_df_event_timestamp_range(
+            entity_df, entity_df_event_timestamp_col
         )
 
         # Create lazy function that is only called from the RetrievalJob object
@@ -292,6 +307,10 @@ class FileOfflineStore(OfflineStore):
             on_demand_feature_views=OnDemandFeatureView.get_requested_odfvs(
                 feature_refs, project, registry
             ),
+            metadata=RetrievalMetadata(
+                min_event_timestamp=entity_df_event_timestamp_range[0],
+                max_event_timestamp=entity_df_event_timestamp_range[1],
+            ),
         )
         return job
 
@@ -363,3 +382,23 @@ class FileOfflineStore(OfflineStore):
         return FileRetrievalJob(
             evaluation_function=evaluate_offline_job, full_feature_names=False,
         )
+
+
+def _get_entity_df_event_timestamp_range(
+    entity_df: Union[pd.DataFrame, str], entity_df_event_timestamp_col: str,
+) -> Tuple[datetime, datetime]:
+    if not isinstance(entity_df, pd.DataFrame):
+        raise ValueError(
+            f"Please provide an entity_df of type {type(pd.DataFrame)} instead of type {type(entity_df)}"
+        )
+
+    entity_df_event_timestamp = entity_df.loc[
+        :, entity_df_event_timestamp_col
+    ].infer_objects()
+    if pd.api.types.is_string_dtype(entity_df_event_timestamp):
+        entity_df_event_timestamp = pd.to_datetime(entity_df_event_timestamp, utc=True)
+
+    return (
+        entity_df_event_timestamp.min(),
+        entity_df_event_timestamp.max(),
+    )
