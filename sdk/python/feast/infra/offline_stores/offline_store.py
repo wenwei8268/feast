@@ -89,15 +89,20 @@ class RetrievalJob(ABC):
 
     @abstractmethod
     def persist(self, storage: SavedDatasetStorage) -> "RetrievalJob":
-        """ Run the retrieval and persists the results in the same DWH as batch data source.
-         Returned new RetrievalJob must use this persisted table as its source. """
+        """
+        Run the retrieval and persist the results in the same offline store (as the one used for read).
+        Return new RetrievalJob that uses this persisted table / file (specified in SavedDatasetStorage)
+        as its source.
+        """
         pass
 
     @property
     @abstractmethod
     def metadata(self) -> Optional[RetrievalMetadata]:
-        """ Return metadata information about retrieval.
-        Should be available (if available) even before materializing the data itself. """
+        """
+        Return metadata information about retrieval.
+        Should be available even before materializing the dataset itself.
+        """
         pass
 
 

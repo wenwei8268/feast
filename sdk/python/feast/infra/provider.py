@@ -157,7 +157,18 @@ class Provider(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def retrieve_saved_dataset(self, config: RepoConfig, dataset: SavedDataset):
+    def retrieve_saved_dataset(
+        self, config: RepoConfig, dataset: SavedDataset
+    ) -> RetrievalJob:
+        """
+        Read saved dataset from offline store.
+        All parameters for retrieval (like path, datetime boundaries, column names for both keys and features, etc)
+        are determined from SavedDataset object.
+
+        Returns:
+             RetrievalJob object, which is lazy wrapper for actual query performed under the hood.
+
+         """
         ...
 
     def get_feature_server_endpoint(self) -> Optional[str]:

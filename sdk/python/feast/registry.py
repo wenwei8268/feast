@@ -705,7 +705,7 @@ class Registry:
 
         Args:
             saved_dataset: SavedDataset that will be added / updated to registry
-            project: Feast project that this entity belongs to
+            project: Feast project that this dataset belongs to
             commit: Whether the change should be persisted immediately
         """
         saved_dataset_proto = saved_dataset.to_proto()

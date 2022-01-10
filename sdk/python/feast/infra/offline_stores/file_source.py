@@ -5,7 +5,7 @@ from pyarrow._s3fs import S3FileSystem
 from pyarrow.parquet import ParquetFile
 
 from feast import type_map
-from feast.data_format import FileFormat
+from feast.data_format import FileFormat, ParquetFormat
 from feast.data_source import DataSource
 from feast.protos.feast.core.DataSource_pb2 import DataSource as DataSourceProto
 from feast.protos.feast.core.SavedDataset_pb2 import (
@@ -271,13 +271,25 @@ class SavedDatasetFileStorage(SavedDatasetStorage):
 
     file_options: FileOptions
 
-    def __init__(self, file_options: FileOptions):
-        self.file_options = file_options
+    def __init__(
+        self,
+        path: str,
+        file_format: FileFormat = ParquetFormat(),
+        s3_endpoint_override: Optional[str] = None,
+    ):
+        self.file_options = FileOptions(
+            file_url=path,
+            file_format=file_format,
+            s3_endpoint_override=s3_endpoint_override,
+        )
 
     @staticmethod
     def from_proto(storage_proto: SavedDatasetStorageProto) -> SavedDatasetStorage:
+        file_options = FileOptions.from_proto(storage_proto.file_storage)
         return SavedDatasetFileStorage(
-            file_options=FileOptions.from_proto(storage_proto.file_storage)
+            path=file_options.file_url,
+            file_format=file_options.file_format,
+            s3_endpoint_override=file_options.s3_endpoint_override,
         )
 
     def to_proto(self) -> SavedDatasetStorageProto:

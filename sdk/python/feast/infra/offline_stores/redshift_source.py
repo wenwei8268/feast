@@ -280,13 +280,16 @@ class SavedDatasetRedshiftStorage(SavedDatasetStorage):
 
     redshift_options: RedshiftOptions
 
-    def __init__(self, redshift_options: RedshiftOptions):
-        self.redshift_options = redshift_options
+    def __init__(self, table_ref: str):
+        self.redshift_options = RedshiftOptions(
+            table=table_ref, schema=None, query=None
+        )
 
     @staticmethod
     def from_proto(storage_proto: SavedDatasetStorageProto) -> SavedDatasetStorage:
+
         return SavedDatasetRedshiftStorage(
-            redshift_options=RedshiftOptions.from_proto(storage_proto.redshift_storage)
+            table_ref=RedshiftOptions.from_proto(storage_proto.redshift_storage).table
         )
 
     def to_proto(self) -> SavedDatasetStorageProto:

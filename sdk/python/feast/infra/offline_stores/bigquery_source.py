@@ -215,13 +215,15 @@ class SavedDatasetBigQueryStorage(SavedDatasetStorage):
 
     bigquery_options: BigQueryOptions
 
-    def __init__(self, bigquery_options: BigQueryOptions):
-        self.bigquery_options = bigquery_options
+    def __init__(self, table_ref: str):
+        self.bigquery_options = BigQueryOptions(table_ref=table_ref, query=None)
 
     @staticmethod
     def from_proto(storage_proto: SavedDatasetStorageProto) -> SavedDatasetStorage:
         return SavedDatasetBigQueryStorage(
-            bigquery_options=BigQueryOptions.from_proto(storage_proto.bigquery_storage)
+            table_ref=BigQueryOptions.from_proto(
+                storage_proto.bigquery_storage
+            ).table_ref
         )
 
     def to_proto(self) -> SavedDatasetStorageProto:

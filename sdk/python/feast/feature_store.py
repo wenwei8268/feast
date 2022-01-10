@@ -709,6 +709,10 @@ class FeatureStore:
             full_feature_names: A boolean that provides the option to add the feature view prefixes to the feature names,
                 changing them from the format "feature" to "feature_view__feature" (e.g., "daily_transactions" changes to
                 "customer_fv__daily_transactions"). By default, this value is set to False.
+            save_as: A optional configuration to persist retrieved dataset in offline store. All features and keys from
+                entity_df as well as entity timestamps will be stored as a saved dataset and could be retrieved later.
+                Name for the saved dataset should be unique, since it's possible to overwrite previously stored dataset
+                with the same name.
 
         Returns:
             RetrievalJob which can be used to materialize the results.
@@ -825,6 +829,18 @@ class FeatureStore:
 
     @log_exceptions_and_usage
     def get_saved_dataset(self, name: str) -> RetrievalJob:
+        """
+        Find a saved dataset in registry by provided name and
+        create a retrieval job to pull whole dataset from storage (offline store).
+
+        If dataset couldn't be found by provided name - SavedDatasetNotFound exception will be raised.
+
+        Data will be retrieved from globally configured offline store.
+
+        Returns:
+            RetrievalJob
+
+        """
         dataset = self._registry.get_saved_dataset(name, self.project)
         provider = self._get_provider()
 
