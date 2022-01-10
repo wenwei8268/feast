@@ -714,13 +714,6 @@ def assert_feature_service_correctness(
 
     actual_df_from_df_entities = job_from_df.to_df()
 
-    expected_df: pd.DataFrame = (
-        expected_df.sort_values(
-            by=[event_timestamp, "order_id", "driver_id", "customer_id"]
-        )
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
     expected_df = expected_df[
         [
             event_timestamp,
@@ -732,15 +725,11 @@ def assert_feature_service_correctness(
             "driver_age",
         ]
     ]
-    actual_df_from_df_entities = (
-        actual_df_from_df_entities[expected_df.columns]
-        .sort_values(by=[event_timestamp, "order_id", "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
 
     assert_frame_equal(
-        expected_df, actual_df_from_df_entities, check_dtype=False,
+        expected_df,
+        actual_df_from_df_entities,
+        keys=[event_timestamp, "order_id", "driver_id", "customer_id"],
     )
 
 
