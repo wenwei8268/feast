@@ -770,24 +770,18 @@ def assert_feature_service_entity_mapping_correctness(
                 "destination__temperature",
             ]
         ]
-        actual_df_from_df_entities = (
-            actual_df_from_df_entities[expected_df.columns]
-            .sort_values(
-                by=[
-                    event_timestamp,
-                    "order_id",
-                    "driver_id",
-                    "customer_id",
-                    "origin_id",
-                    "destination_id",
-                ]
-            )
-            .drop_duplicates()
-            .reset_index(drop=True)
-        )
 
         assert_frame_equal(
-            expected_df, actual_df_from_df_entities, check_dtype=False,
+            expected_df,
+            actual_df_from_df_entities,
+            keys=[
+                event_timestamp,
+                "order_id",
+                "driver_id",
+                "customer_id",
+                "origin_id",
+                "destination_id",
+            ],
         )
     else:
         # using 2 of the same FeatureView without full_feature_names=True will result in collision
