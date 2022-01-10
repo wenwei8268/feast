@@ -566,8 +566,12 @@ def test_historical_features_persisting(
         storage=environment.data_source_creator.create_saved_dataset_destination(),
     )
 
+    entity_df = datasets["entity"].drop(
+        columns=["order_id", "origin_id", "destination_id"]
+    )
+
     job = store.get_historical_features(
-        entity_df=datasets["entity"],
+        entity_df=entity_df,
         features=[
             "customer_profile:current_balance",
             "customer_profile:avg_passenger_count",
@@ -592,7 +596,7 @@ def test_historical_features_persisting(
         feature_views["location"],
         datasets["global"],
         feature_views["global"],
-        datasets["entity"],
+        entity_df,
         event_timestamp,
         full_feature_names,
     ).drop(
@@ -607,21 +611,31 @@ def test_historical_features_persisting(
     )
 
     expected_df: pd.DataFrame = (
-        expected_df.sort_values(
-            by=[event_timestamp, "order_id", "driver_id", "customer_id"]
-        )
+        expected_df.sort_values(by=[event_timestamp, "driver_id", "customer_id"])
         .drop_duplicates()
         .reset_index(drop=True)
     )
     actual_df_from_df_entities = (
         job.to_df()[expected_df.columns]
-        .sort_values(by=[event_timestamp, "order_id", "driver_id", "customer_id"])
+        .sort_values(by=[event_timestamp, "driver_id", "customer_id"])
         .drop_duplicates()
         .reset_index(drop=True)
     )
 
     assert_frame_equal(
         expected_df, actual_df_from_df_entities, check_dtype=False,
+    )
+
+    saved_dataset = store.get_saved_dataset("saved_dataset")
+    saved_dataset_df = (
+        saved_dataset.to_df()[expected_df.columns]
+        .sort_values(by=[event_timestamp, "driver_id", "customer_id"])
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+    assert_frame_equal(
+        actual_df_from_df_entities, saved_dataset_df, check_dtype=False,
     )
 
 

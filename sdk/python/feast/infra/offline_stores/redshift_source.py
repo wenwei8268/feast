@@ -293,3 +293,6 @@ class SavedDatasetRedshiftStorage(SavedDatasetStorage):
         return SavedDatasetStorageProto(
             redshift_storage=self.redshift_options.to_proto()
         )
+
+    def to_data_source(self) -> DataSource:
+        return RedshiftSource(table=self.redshift_options.table)

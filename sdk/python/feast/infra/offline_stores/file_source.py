@@ -282,3 +282,10 @@ class SavedDatasetFileStorage(SavedDatasetStorage):
 
     def to_proto(self) -> SavedDatasetStorageProto:
         return SavedDatasetStorageProto(file_storage=self.file_options.to_proto())
+
+    def to_data_source(self) -> DataSource:
+        return FileSource(
+            path=self.file_options.file_url,
+            file_format=self.file_options.file_format,
+            s3_endpoint_override=self.file_options.s3_endpoint_override,
+        )

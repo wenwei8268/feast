@@ -60,6 +60,7 @@ from feast.inference import (
     update_entities_with_inferred_types_from_feature_views,
     update_feature_views_with_inferred_features,
 )
+from feast.infra.offline_stores.offline_utils import get_expected_join_keys
 from feast.infra.provider import Provider, RetrievalJob, get_provider
 from feast.on_demand_feature_view import OnDemandFeatureView
 from feast.online_response import OnlineResponse, _infer_online_entity_rows
@@ -765,21 +766,23 @@ class FeatureStore:
         set_usage_attribute("request_fv", bool(request_feature_views))
 
         # Check that the right request data is present in the entity_df
+        expected_request_keys = [
+            (feature.name, fv.name)
+            for fv in request_feature_views
+            for feature in fv.features
+        ] + [
+            (feature_name, odfv.name)
+            for odfv in on_demand_feature_views
+            for feature_name in odfv.get_request_data_schema()
+        ]
+
         if type(entity_df) == pd.DataFrame:
             entity_pd_df = cast(pd.DataFrame, entity_df)
-            for fv in request_feature_views:
-                for feature in fv.features:
-                    if feature.name not in entity_pd_df.columns:
-                        raise RequestDataNotFoundInEntityDfException(
-                            feature_name=feature.name, feature_view_name=fv.name
-                        )
-            for odfv in on_demand_feature_views:
-                odfv_request_data_schema = odfv.get_request_data_schema()
-                for feature_name in odfv_request_data_schema.keys():
-                    if feature_name not in entity_pd_df.columns:
-                        raise RequestDataNotFoundInEntityDfException(
-                            feature_name=feature_name, feature_view_name=odfv.name,
-                        )
+            for feature_name, view_name in expected_request_keys:
+                if feature_name not in entity_pd_df.columns:
+                    raise RequestDataNotFoundInEntityDfException(
+                        feature_name=feature_name, feature_view_name=view_name
+                    )
 
         _validate_feature_refs(_feature_refs, full_feature_names)
         # Drop refs that refer to RequestFeatureViews since they don't need to be fetched and
@@ -787,8 +790,19 @@ class FeatureStore:
         _feature_refs = [ref for ref in _feature_refs if ref not in request_fv_refs]
         provider = self._get_provider()
 
+        expected_join_keys = list(
+            get_expected_join_keys(self.project, feature_views, self._registry)
+        )
+
         saved_dataset = (
-            SavedDataset(name=save_as.name, features=[], storage=save_as.storage)
+            SavedDataset(
+                name=save_as.name,
+                features=_feature_refs,
+                join_keys=expected_join_keys
+                + [key for (key, _) in expected_request_keys],
+                full_feature_names=full_feature_names,
+                storage=save_as.storage,
+            )
             if save_as
             else None
         )
@@ -804,7 +818,17 @@ class FeatureStore:
             save_as=saved_dataset,
         )
 
+        if saved_dataset:
+            self._registry.apply_saved_dataset(saved_dataset, self.project, commit=True)
+
         return job
+
+    @log_exceptions_and_usage
+    def get_saved_dataset(self, name: str) -> RetrievalJob:
+        dataset = self._registry.get_saved_dataset(name, self.project)
+        provider = self._get_provider()
+
+        return provider.retrieve_saved_dataset(config=self.config, dataset=dataset)
 
     @log_exceptions_and_usage
     def materialize_incremental(

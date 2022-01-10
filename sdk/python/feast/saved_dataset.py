@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Type
 
 from google.protobuf.json_format import MessageToJson
 
-from feast.feature_view_projection import FeatureViewProjection
+from feast.data_source import DataSource
 from feast.protos.feast.core.SavedDataset_pb2 import SavedDataset as SavedDatasetProto
 from feast.protos.feast.core.SavedDataset_pb2 import SavedDatasetMeta, SavedDatasetSpec
 from feast.protos.feast.core.SavedDataset_pb2 import (
@@ -34,12 +34,18 @@ class SavedDatasetStorage(metaclass=_StorageRegistry):
 
     @abstractmethod
     def to_proto(self) -> SavedDatasetStorageProto:
-        pass
+        ...
+
+    @abstractmethod
+    def to_data_source(self) -> DataSource:
+        ...
 
 
 class SavedDataset:
     name: str
-    features: List[FeatureViewProjection]
+    features: List[str]
+    join_keys: List[str]
+    full_feature_names: bool
     storage: SavedDatasetStorage
 
     created_timestamp: Optional[datetime] = None
@@ -51,12 +57,16 @@ class SavedDataset:
     def __init__(
         self,
         name: str,
-        features: List[FeatureViewProjection],
+        features: List[str],
+        join_keys: List[str],
         storage: SavedDatasetStorage,
+        full_feature_names: bool = False,
     ):
         self.name = name
         self.features = features
+        self.join_keys = join_keys
         self.storage = storage
+        self.full_feature_names = full_feature_names
 
     def __repr__(self):
         items = (f"{k} = {v}" for k, v in self.__dict__.items())
@@ -91,14 +101,10 @@ class SavedDataset:
         """
         ds = SavedDataset(
             name=saved_dataset_proto.spec.name,
-            features=[],
+            features=list(saved_dataset_proto.spec.features),
+            join_keys=list(saved_dataset_proto.spec.join_keys),
+            full_feature_names=saved_dataset_proto.spec.full_feature_names,
             storage=SavedDatasetStorage.from_proto(saved_dataset_proto.spec.storage),
-        )
-        ds.features.extend(
-            [
-                FeatureViewProjection.from_proto(projection)
-                for projection in saved_dataset_proto.spec.features
-            ]
         )
 
         if saved_dataset_proto.meta.HasField("created_timestamp"):
@@ -137,7 +143,9 @@ class SavedDataset:
 
         spec = SavedDatasetSpec(
             name=self.name,
-            features=[projection.to_proto() for projection in self.features],
+            features=self.features,
+            join_keys=self.join_keys,
+            full_feature_names=self.full_feature_names,
             storage=self.storage.to_proto(),
         )
 

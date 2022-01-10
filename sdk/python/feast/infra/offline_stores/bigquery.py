@@ -100,7 +100,9 @@ class BigQueryOfflineStore(OfflineStore):
         if created_timestamp_column:
             timestamps.append(created_timestamp_column)
         timestamp_desc_string = " DESC, ".join(timestamps) + " DESC"
-        field_string = ", ".join(join_key_columns + feature_name_columns + timestamps)
+        field_string = ", ".join(
+            set(join_key_columns + feature_name_columns + timestamps)
+        )
 
         client = _get_bigquery_client(
             project=config.offline_store.project_id,
@@ -478,8 +480,8 @@ def _get_entity_df_event_timestamp_range(
                 entity_df_event_timestamp, utc=True
             )
         entity_df_event_timestamp_range = (
-            entity_df_event_timestamp.min(),
-            entity_df_event_timestamp.max(),
+            entity_df_event_timestamp.min().to_pydatetime(),
+            entity_df_event_timestamp.max().to_pydatetime(),
         )
     else:
         raise InvalidEntityType(type(entity_df))

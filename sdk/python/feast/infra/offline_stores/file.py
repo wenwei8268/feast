@@ -399,6 +399,6 @@ def _get_entity_df_event_timestamp_range(
         entity_df_event_timestamp = pd.to_datetime(entity_df_event_timestamp, utc=True)
 
     return (
-        entity_df_event_timestamp.min(),
-        entity_df_event_timestamp.max(),
+        entity_df_event_timestamp.min().to_pydatetime(),
+        entity_df_event_timestamp.max().to_pydatetime(),
     )

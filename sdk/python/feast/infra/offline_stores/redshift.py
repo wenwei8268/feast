@@ -91,7 +91,7 @@ class RedshiftOfflineStore(OfflineStore):
             timestamp_columns.append(created_timestamp_column)
         timestamp_desc_string = " DESC, ".join(timestamp_columns) + " DESC"
         field_string = ", ".join(
-            join_key_columns + feature_name_columns + timestamp_columns
+            set(join_key_columns + feature_name_columns + timestamp_columns)
         )
 
         redshift_client = aws_utils.get_redshift_data_client(
@@ -436,8 +436,8 @@ def _get_entity_df_event_timestamp_range(
                 entity_df_event_timestamp, utc=True
             )
         entity_df_event_timestamp_range = (
-            entity_df_event_timestamp.min(),
-            entity_df_event_timestamp.max(),
+            entity_df_event_timestamp.min().to_pydatetime(),
+            entity_df_event_timestamp.max().to_pydatetime(),
         )
     elif isinstance(entity_df, str):
         # If the entity_df is a string (SQL query), determine range

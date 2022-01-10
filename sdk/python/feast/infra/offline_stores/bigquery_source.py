@@ -228,3 +228,6 @@ class SavedDatasetBigQueryStorage(SavedDatasetStorage):
         return SavedDatasetStorageProto(
             bigquery_storage=self.bigquery_options.to_proto()
         )
+
+    def to_data_source(self) -> DataSource:
+        return BigQuerySource(table_ref=self.bigquery_options.table_ref)

@@ -156,6 +156,10 @@ class Provider(abc.ABC):
         """
         ...
 
+    @abc.abstractmethod
+    def retrieve_saved_dataset(self, config: RepoConfig, dataset: SavedDataset):
+        ...
+
     def get_feature_server_endpoint(self) -> Optional[str]:
         """Returns endpoint for the feature server, if it exists."""
         return None

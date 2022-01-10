@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import pandas
@@ -22,6 +22,7 @@ from feast.registry import Registry
 from feast.repo_config import RepoConfig
 from feast.saved_dataset import SavedDataset
 from feast.usage import RatioSampler, log_exceptions_and_usage, set_usage_attribute
+from feast.utils import make_tzaware
 
 DEFAULT_BATCH_SIZE = 10_000
 
@@ -180,6 +181,38 @@ class PassthroughProvider(Provider):
             full_feature_names=full_feature_names,
         )
         if save_as:
+            save_as.min_event_timestamp = (
+                job.metadata.min_event_timestamp if job.metadata else None
+            )
+            save_as.max_event_timestamp = (
+                job.metadata.max_event_timestamp if job.metadata else None
+            )
+
             job = job.persist(save_as.storage)
 
         return job
+
+    def retrieve_saved_dataset(
+        self, config: RepoConfig, dataset: SavedDataset
+    ) -> RetrievalJob:
+        set_usage_attribute("provider", self.__class__.__name__)
+
+        feature_name_columns = [
+            ref.replace(":", "__") if dataset.full_feature_names else ref.split(":")[1]
+            for ref in dataset.features
+        ]
+
+        # ToDo: replace hardcoded value
+        event_ts_column = "event_timestamp"
+
+        return self.offline_store.pull_latest_from_table_or_query(
+            config=config,
+            data_source=dataset.storage.to_data_source(),
+            join_key_columns=dataset.join_keys
+            + [event_ts_column],  # avoid deduplication
+            feature_name_columns=feature_name_columns,
+            event_timestamp_column=event_ts_column,
+            created_timestamp_column=None,
+            start_date=make_tzaware(dataset.min_event_timestamp),  # type: ignore
+            end_date=make_tzaware(dataset.max_event_timestamp + timedelta(seconds=1)),  # type: ignore
+        )
