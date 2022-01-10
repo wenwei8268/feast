@@ -60,10 +60,10 @@ message SavedDatasetMeta {
   // Time where this Saved Dataset is last updated
   google.protobuf.Timestamp last_updated_timestamp = 2;
 
-  // min timestamp of dataset (needed for retrieval)
+  // min timestamp in the dataset (needed for retrieval)
   google.protobuf.Timestamp min_event_timestamp = 3;
 
-  // max timestamp of dataset (needed for retrieval)
+  // max timestamp in the dataset (needed for retrieval)
   google.protobuf.Timestamp max_event_timestamp = 4;
 }
 
