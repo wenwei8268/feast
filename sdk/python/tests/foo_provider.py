@@ -77,3 +77,6 @@ class FooProvider(Provider):
         requested_features: List[str] = None,
     ) -> List[Tuple[Optional[datetime], Optional[Dict[str, ValueProto]]]]:
         pass
+
+    def retrieve_saved_dataset(self, config: RepoConfig, dataset: SavedDataset):
+        pass
