@@ -11,7 +11,7 @@ from feast import FileSource
 from feast.data_format import ParquetFormat
 from feast.data_source import DataSource
 from feast.infra.offline_stores.file import FileOfflineStoreConfig
-from feast.infra.offline_stores.file_source import FileOptions, SavedDatasetFileStorage
+from feast.infra.offline_stores.file_source import SavedDatasetFileStorage
 from feast.repo_config import FeastConfigBaseModel
 from tests.integration.feature_repos.universal.data_source_creator import (
     DataSourceCreator,
@@ -55,9 +55,7 @@ class FileDataSourceCreator(DataSourceCreator):
     def create_saved_dataset_destination(self) -> SavedDatasetFileStorage:
         d = tempfile.mkdtemp(prefix=self.project_name)
         return SavedDatasetFileStorage(
-            file_options=FileOptions(
-                file_format=ParquetFormat(), file_url=d, s3_endpoint_override=None
-            )
+            path=d, file_format=ParquetFormat(), s3_endpoint_override=None
         )
 
     def get_prefixed_table_name(self, suffix: str) -> str:
@@ -142,11 +140,9 @@ class S3FileDataSourceCreator(DataSourceCreator):
         host = self.minio.get_container_host_ip()
 
         return SavedDatasetFileStorage(
-            file_options=FileOptions(
-                file_format=ParquetFormat(),
-                file_url=f"s3://{self.bucket}/persisted/{str(uuid.uuid4())}",
-                s3_endpoint_override=f"http://{host}:{port}",
-            )
+            path=f"s3://{self.bucket}/persisted/{str(uuid.uuid4())}",
+            file_format=ParquetFormat(),
+            s3_endpoint_override=f"http://{host}:{port}",
         )
 
     def get_prefixed_table_name(self, suffix: str) -> str:
