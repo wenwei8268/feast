@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal as pd_assert_frame_equal
 from pytz import utc
 
 from feast import utils
@@ -349,23 +349,12 @@ def test_historical_features(environment, universal_data_sources, full_feature_n
     print(str(f"Time to execute job_from_df.to_df() = '{(end_time - start_time)}'\n"))
 
     assert sorted(expected_df.columns) == sorted(actual_df_from_df_entities.columns)
-    expected_df: pd.DataFrame = (
-        expected_df.sort_values(
-            by=[event_timestamp, "order_id", "driver_id", "customer_id"]
-        )
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
-    actual_df_from_df_entities = (
-        actual_df_from_df_entities[expected_df.columns]
-        .sort_values(by=[event_timestamp, "order_id", "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
+    assert_frame_equal(
+        expected_df,
+        actual_df_from_df_entities,
+        keys=[event_timestamp, "order_id", "driver_id", "customer_id"],
     )
 
-    assert_frame_equal(
-        expected_df, actual_df_from_df_entities, check_dtype=False,
-    )
     assert_feature_service_correctness(
         store,
         feature_service,
@@ -382,18 +371,13 @@ def test_historical_features(environment, universal_data_sources, full_feature_n
         full_expected_df,
         event_timestamp,
     )
-
     table_from_df_entities: pd.DataFrame = job_from_df.to_arrow().to_pandas()
 
-    columns_expected_in_table = expected_df.columns.tolist()
-
-    table_from_df_entities = (
-        table_from_df_entities[columns_expected_in_table]
-        .sort_values(by=[event_timestamp, "order_id", "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
+    assert_frame_equal(
+        expected_df,
+        table_from_df_entities,
+        keys=[event_timestamp, "order_id", "driver_id", "customer_id"],
     )
-    assert_frame_equal(actual_df_from_df_entities, table_from_df_entities)
 
 
 @pytest.mark.integration
@@ -510,42 +494,23 @@ def test_historical_features_with_entities_from_query(
             "destination__temperature",
         ]
     )
-    assert sorted(expected_df_query.columns) == sorted(
-        actual_df_from_sql_entities.columns
+    assert_frame_equal(
+        expected_df_query,
+        actual_df_from_sql_entities,
+        keys=[event_timestamp, "order_id", "driver_id", "customer_id"],
     )
 
-    actual_df_from_sql_entities = (
-        actual_df_from_sql_entities[expected_df_query.columns]
-        .sort_values(by=[event_timestamp, "order_id", "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
-    expected_df_query = (
-        expected_df_query.sort_values(
-            by=[event_timestamp, "order_id", "driver_id", "customer_id"]
+    table_from_sql_entities = job_from_sql.to_arrow().to_pandas()
+    for col in table_from_sql_entities.columns:
+        expected_df_query[col] = expected_df_query[col].astype(
+            table_from_sql_entities[col].dtype
         )
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
 
     assert_frame_equal(
-        actual_df_from_sql_entities, expected_df_query, check_dtype=False,
+        expected_df_query,
+        table_from_sql_entities,
+        keys=[event_timestamp, "order_id", "driver_id", "customer_id"],
     )
-
-    table_from_sql_entities = job_from_sql.to_arrow()
-    df_from_sql_entities = (
-        table_from_sql_entities.to_pandas()[expected_df_query.columns]
-        .sort_values(by=[event_timestamp, "order_id", "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
-
-    for col in df_from_sql_entities.columns:
-        expected_df_query[col] = expected_df_query[col].astype(
-            df_from_sql_entities[col].dtype
-        )
-
-    assert_frame_equal(expected_df_query, df_from_sql_entities)
 
 
 @pytest.mark.integration
@@ -610,32 +575,16 @@ def test_historical_features_persisting(
         ]
     )
 
-    expected_df: pd.DataFrame = (
-        expected_df.sort_values(by=[event_timestamp, "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
-    actual_df_from_df_entities = (
-        job.to_df()[expected_df.columns]
-        .sort_values(by=[event_timestamp, "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
-
     assert_frame_equal(
-        expected_df, actual_df_from_df_entities, check_dtype=False,
+        expected_df, job.to_df(), keys=[event_timestamp, "driver_id", "customer_id"]
     )
 
     saved_dataset = store.get_saved_dataset("saved_dataset")
-    saved_dataset_df = (
-        saved_dataset.to_df()[expected_df.columns]
-        .sort_values(by=[event_timestamp, "driver_id", "customer_id"])
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
 
     assert_frame_equal(
-        actual_df_from_df_entities, saved_dataset_df, check_dtype=False,
+        expected_df,
+        saved_dataset.to_df(),
+        keys=[event_timestamp, "driver_id", "customer_id"],
     )
 
 
@@ -732,13 +681,7 @@ def test_historical_features_from_bigquery_sources_containing_backfills(environm
     print(str(f"Time to execute job_from_df.to_df() = '{(end_time - start_time)}'\n"))
 
     assert sorted(expected_df.columns) == sorted(actual_df.columns)
-    assert_frame_equal(
-        expected_df.sort_values(by=["driver_id"]).reset_index(drop=True),
-        actual_df[expected_df.columns]
-        .sort_values(by=["driver_id"])
-        .reset_index(drop=True),
-        check_dtype=False,
-    )
+    assert_frame_equal(expected_df, actual_df, keys=["driver_id"])
 
 
 def response_feature_name(feature: str, full_feature_names: bool) -> str:
@@ -865,3 +808,20 @@ def assert_feature_service_entity_mapping_correctness(
                 features=feature_service,
                 full_feature_names=full_feature_names,
             )
+
+
+def assert_frame_equal(expected_df, actual_df, keys):
+    expected_df: pd.DataFrame = (
+        expected_df.sort_values(by=keys).drop_duplicates().reset_index(drop=True)
+    )
+
+    actual_df = (
+        actual_df[expected_df.columns]
+        .sort_values(by=keys)
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+    pd_assert_frame_equal(
+        expected_df, actual_df, check_dtype=False,
+    )
