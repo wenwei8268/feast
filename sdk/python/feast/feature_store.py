@@ -799,8 +799,16 @@ class FeatureStore:
             get_expected_join_keys(self.project, feature_views, self._registry)
         )
 
-        saved_dataset = (
-            SavedDataset(
+        saved_dataset = None
+        if save_as:
+            warnings.warn(
+                "Saving dataset is an experimental feature. "
+                "This API is unstable and it could and most probably will be changed in the future. "
+                "We do not guarantee that future changes will maintain backward compatibility.",
+                RuntimeWarning,
+            )
+
+            saved_dataset = SavedDataset(
                 name=save_as.name,
                 features=_feature_refs,
                 join_keys=expected_join_keys
@@ -808,9 +816,6 @@ class FeatureStore:
                 full_feature_names=full_feature_names,
                 storage=save_as.storage,
             )
-            if save_as
-            else None
-        )
 
         job = provider.get_historical_features(
             self.config,
@@ -842,6 +847,13 @@ class FeatureStore:
             RetrievalJob
 
         """
+        warnings.warn(
+            "Retrieving datasets is an experimental feature. "
+            "This API is unstable and it could and most probably will be changed in the future. "
+            "We do not guarantee that future changes will maintain backward compatibility.",
+            RuntimeWarning,
+        )
+
         dataset = self._registry.get_saved_dataset(name, self.project)
         provider = self._get_provider()
 
