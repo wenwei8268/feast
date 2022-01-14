@@ -1,7 +1,7 @@
 # Dataset
 
 Feast Datasets allow for conveniently saving dataframes that include both features and entities to be subsequently used for data analysis and model training.
-[Data Quality Monitoring]() was the primary motivation for creating Dataset concept.
+[Data Quality Monitoring](https://docs.google.com/document/d/110F72d4NTv80p35wDSONxhhPBqWRwbZXG4f9mNEMd98) was the primary motivation for creating Dataset concept.
 
 Dataset's metadata is stored in the Feast registry and dataframe with features, entities, additional input keys and timestamp is kept in the [offline store](../architecture-and-components/offline-store.md).
 
